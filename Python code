@@ -1,0 +1,78 @@
+import cirq
+import numpy as np
+
+def simulate_quantum_security_with_eavesdropping(num_bits=100, quantum_error_rate=0.05, classical_error_rate=0.1):
+    # Alice, Bob, and Eve each have a qubit
+    alice_qubit = cirq.GridQubit(0, 0)
+    bob_qubit = cirq.GridQubit(1, 0)
+    eve_qubit = cirq.GridQubit(2, 0)
+
+    # Create quantum, classical, and eavesdropper circuits
+    quantum_circuit = cirq.Circuit()
+    classical_circuit = cirq.Circuit()
+    eavesdropper_circuit = cirq.Circuit()
+
+    # Quantum Communication
+    quantum_circuit.append(cirq.H(alice_qubit))  # Apply Hadamard gate to Alice's qubit
+    quantum_circuit.append(cirq.DepolarizingChannel(quantum_error_rate).on(alice_qubit))  # Introduce quantum errors
+    quantum_circuit.append(cirq.CNOT(alice_qubit, bob_qubit))  # Entangle Alice's qubit with Bob's qubit
+    quantum_circuit.append(cirq.H(alice_qubit))  # Apply Hadamard gate to Alice's qubit again
+    quantum_circuit.append(cirq.measure(alice_qubit, key='alice_measurement'))  # Measure Alice's qubit
+    quantum_circuit.append(cirq.measure(bob_qubit, key='bob_measurement'))  # Measure Bob's qubit
+
+    # Classical Communication
+    classical_circuit.append(cirq.X(alice_qubit))  # Apply NOT gate to simulate classical bits
+    classical_circuit.append(cirq.DepolarizingChannel(classical_error_rate).on(alice_qubit))  # Introduce classical errors
+    classical_circuit.append(cirq.CNOT(alice_qubit, eve_qubit))  # Eavesdropper intercepts the communication
+    classical_circuit.append(cirq.measure(alice_qubit, key='alice_measurement'))  # Measure Alice's qubit
+
+    # Quantum Communication with Eavesdropping
+    eavesdropper_circuit.append(cirq.H(alice_qubit))  # Apply Hadamard gate to Alice's qubit
+    eavesdropper_circuit.append(cirq.DepolarizingChannel(quantum_error_rate).on(alice_qubit))  # Introduce quantum errors
+    eavesdropper_circuit.append(cirq.CNOT(alice_qubit, eve_qubit))  # Eavesdropper intercepts the communication
+    eavesdropper_circuit.append(cirq.H(alice_qubit))  # Apply Hadamard gate to Alice's qubit again
+    eavesdropper_circuit.append(cirq.measure(alice_qubit, key='eavesdropper_measurement'))  # Measure Eve's qubit
+
+    # Simulate quantum circuit
+    quantum_simulator = cirq.Simulator()
+    quantum_result = quantum_simulator.run(quantum_circuit, repetitions=num_bits)
+
+    # Simulate classical circuit
+    classical_simulator = cirq.Simulator()
+    classical_result = classical_simulator.run(classical_circuit, repetitions=num_bits)
+
+    # Simulate quantum circuit with eavesdropping
+    eavesdropper_simulator = cirq.Simulator()
+    eavesdropper_result = eavesdropper_simulator.run(eavesdropper_circuit, repetitions=num_bits)
+
+    # Analyze the results
+    quantum_matching_bits = np.sum(quantum_result.measurements['alice_measurement'] == quantum_result.measurements['bob_measurement'])
+    classical_matching_bits_with_eavesdropping = np.sum(classical_result.measurements['alice_measurement'])
+    eavesdropper_measurement_bits = np.sum(eavesdropper_result.measurements['eavesdropper_measurement'])
+
+    # Calculate error rates
+    quantum_error_rate = 1 - (quantum_matching_bits / num_bits)
+    classical_error_rate_with_eavesdropping = 1 - (classical_matching_bits_with_eavesdropping / num_bits)
+
+    # Display the results and analysis
+    print(f"Quantum Matching Bits: {quantum_matching_bits} out of {num_bits}")
+    print(f"Quantum Error Rate: {quantum_error_rate:.2%}")
+    print(f"\nClassical Matching Bits with Eavesdropping: {classical_matching_bits_with_eavesdropping} out of {num_bits}")
+    print(f"Classical Error Rate with Eavesdropping: {classical_error_rate_with_eavesdropping:.2%}")
+    print(f"\nEavesdropper's Measurement Bits: {eavesdropper_measurement_bits} out of {num_bits}")
+
+    # Analysis summary
+    print("\nAnalysis:")
+    if quantum_error_rate > classical_error_rate_with_eavesdropping:
+        print("The quantum communication scenario with eavesdropping shows a higher error rate, indicating potential interference.")
+    else:
+        print("The quantum communication scenario with eavesdropping demonstrates a comparable or lower error rate compared to classical communication, highlighting its ability to detect eavesdropping attempts.")
+
+# Run the simulation
+num_bits = 100
+quantum_error_rate = 0.05
+classical_error_rate = 0.1
+simulate_quantum_security_with_eavesdropping(
+    num_bits=num_bits,
+    quantum_error_rate=quantum_error_rate,
+    classical_error_rate=classical_error_rate)
